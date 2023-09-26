@@ -1,0 +1,11 @@
+%Plotter script
+
+clf
+plot(t(1:6000),50*xhat(:,1:6000),t(1:6000),50*x(:,1:6000))
+plot_spikes(t(1:6000),spikes(:,1:6000))
+hold on
+plot(t(1:6000),50*xhat(:,1:6000),"LineWidth" , 5,"Color","red")
+plot(t(1:6000),50*x(:,1:6000),"LineWidth" , 3, "Color","blue")
+grid on
+xlabel("time in s","FontSize",15)
+title("Leaky Differentiator with Analytic method. Timestep 0.1ms", FontSize=15)

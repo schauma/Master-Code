@@ -1,0 +1,47 @@
+% clear
+
+dt = 0.1e-3;
+T = 2.2;
+Ntime = T/dt;
+
+
+[A,c,x] = getInput(dt.*(1:Ntime),0.0);
+J = size(A,1);
+Nneuron = 400;
+
+lambda = 20;
+F = randn(J,Nneuron);
+vn = vecnorm(F,2);
+F = 0.03*F./vn;
+C = -F'*F;
+Thresh = 5.5e-4;
+
+
+rO=zeros(Nneuron,Ntime);%filtered spike trains
+O=zeros(Nneuron,Ntime); %spike trains array
+V=zeros(Nneuron,Ntime); %amebrane poterial array
+
+for t=2:Ntime
+
+    Input = c(:,t-1) + (A+eye(J)*lambda)*x(:,t-1);
+    V(:,t)=(1-lambda*dt)*V(:,t-1)+dt*F'*Input+C*O(:,t-1)+0.00*randn(Nneuron,1);%the membrane potential is a leaky integration of the feedforward input and the spikes
+
+ 
+    [m,k]= max(V(:,t) - Thresh-0.0*randn(Nneuron,1));%finding the neuron with largest membrane potential
+        
+    if (m>=0)  %if its membrane potential exceeds the threshold the neuron k spikes  
+        O(k,t)=1; % the spike ariable is turned to one
+    end
+
+    rO(:,t)=(1-lambda*dt)*rO(:,t-1)+1*O(:,t); %filtering the spikes
+    x(:,t) = F*rO(:,t);
+end
+
+options = odeset("MaxStep",1e-4);
+[tt,y] = ode45(@(t,x) A*x + c(:,floor(t/dt)+1),[0 T-dt],x(:,1),options);
+
+hold on
+h = 1;
+plot(dt.*(1:Ntime),x(h,1) + x(h,:));
+hold on
+plot(tt,y(:,h))
