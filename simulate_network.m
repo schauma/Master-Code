@@ -29,9 +29,9 @@ for i = 1:n_time-1
 
         [val,idx] = max(V(:,i+1)-Threshold);
         cnt = cnt + 1;
-
-
-        if cnt> 5e3
+        
+        
+        if cnt> 1e3
         error("Network didnt converge properly");
         end
     end

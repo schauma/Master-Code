@@ -5,25 +5,25 @@ dt = 0.1e-3;
 t= dt:dt:TE;
 n_time = length(t);
 n_training_time = 100000;
-n_neuron = 100;
-fast_learning_rate = 0*0.01;
+n_neuron = 20;
+fast_learning_rate = 1*0.01;
 slow_learning_rate = 1*0.001;
 global beta1 beta2 Wf_true Ws_true
 beta = 1;
-beta1 = 1.95;%1.9;
-beta2 = 0.51;%0.53;
+beta1 = 1.90;%1.9;
+beta2 =0.522;%0.53;
 K = 1*10;
 training_epochs =100;
 %There is a shady relation between K and lambdaD
 lambdaD = 10;
 lambdaV = 0*10;
-mu = 10*1e-5;
+mu = 1*1e-5;
 
 % Model problem
 % Damped oscilator
 % External input is a bump function
 %A = -1.*eye(1);
-A = [0 , 1 ; -10, -1];
+A = [0 , 1 ; -1, -10];
 J = size(A,1);
 
 %Very dependend on F
@@ -44,29 +44,43 @@ Ws_true = round(F'*(A+lambdaD*eye(J))*F,9);
 %Rerun the script multiple times and convergence gets better
 %Until it becomes unstable
 if ~exist("Wf","var")
-rng("default")
-Wf = 1e-4*randn(n_neuron);%*0*Wf_true;
+    rng("default")
+    Wf = 1e-4*randn(n_neuron);%*0*Wf_true;
 end
 if ~exist("Ws","var")
-Ws = 1e-4*randn(n_neuron);%0*Ws_true;
+    Ws = 1e-4*randn(n_neuron);%0*Ws_true;
 end
 pt= 0.01*n_time;
 c = 10*[zeros(J,15*pt),ones(J,30*pt),0*-1*ones(J,30*pt),zeros(J,25*pt)];
+
+% Adjustments!!!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Ws = Ws_true;
+slow_learning_rate = 0;
+Wf = 0*Wf;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 [xE_true,xT,rate,spikes,V]= simulate_network(A,c,F,Threshold,n_time,dt,...
     Ws_true,Wf_true,lambdaD,lambdaV);
 
 % Ping Ponging effect!
-[Wf_learned, Ws_learned] = bourdoukan_learning(A,F,Threshold-mu/2,...
+[Wf_learned, Ws_learned,Wfs,Wss] = bourdoukan_learning(A,F,Threshold-0*mu/2,...
     n_training_time,dt,Ws,Wf,lambdaD,lambdaV,fast_learning_rate,...
     slow_learning_rate,training_epochs,mu,beta,K);
 Ws = Ws_learned;
 Wf = Wf_learned;
 
-[xE,xT,rate,spikes,V]= simulate_network(A,c,F,Threshold-mu/2,n_time,dt,...
+try
+[xE,xT,rate,spikes,V]= simulate_network(A,c,F,Threshold,n_time,dt,...
     Ws_learned,Wf_learned,lambdaD,lambdaV);
-
+catch exception
+    display("Didnt converge!");
+end
 
 
 figure
@@ -86,23 +100,28 @@ legend("$||x - \hat{x}||$","Interpreter","latex","FontSize",20)
 % plot(t,vecnorm(rate,Inf,1))
 % legend("Firing rates")
 
-function [Wf,Ws] = bourdoukan_learning(A,F,Threshold,n_time,dt,Ws,Wf,...
+function [Wf,Ws,Wfs,Wss] = bourdoukan_learning(A,F,Threshold,n_time,dt,Ws,Wf,...
     lambdaD,lambdaV,fast_learning_rate,slow_learning_rate,n_epochs,mu,beta,K)
 global beta1 beta2 Ws_true Wf_true
 
 slow_drop_rate = 0*0.03;
 fast_drop_rate =0*0.05;%compare wf with .7 and .5 drop rate.what is the critical change?
-completed_learning  = 1;
+
+
 
 
 
 J = size(A,1);
 n_neuron = size(Ws,1);
 V = zeros(n_neuron,1);
-spikes = V;
 rate = V;
 xT = zeros(J,1);
 xE = xT;
+one_hot = eye(n_neuron);
+
+
+Wss = zeros([n_neuron,n_neuron,n_epochs]);
+Wfs = Wss;
 
 
 sigma=abs(60); %std of the smoothing kernel
@@ -124,34 +143,25 @@ for ee = 1:n_epochs
     rate = 0*rate;
     V = 0*V;
     for i = 1:n_time-1
-        
+
         e = xT - xE;
         V = (1-lambdaV*dt)*V...
             + dt*F'*c(:,i)...
             + dt*Ws*rate...
-            + 0*Wf*spikes...
             + dt*K*F'*e...
             + 0.000*randn(n_neuron,1);
 
-        
-        
+
+
         [val,idx] = max(V-Threshold);
-        spikes = 0*spikes;
         while val>0
-            
-           
 
-            % Learning            
-            
+            % Learning
+
             % Fast learning
-            dWf = -((V+ mu*rate)*beta1+ Wf(:,idx) + mu*one_hot(n_neuron,idx));
-            %dWf = -(V + beta2*Wf(:,idx));
-            Wf(:,idx) = Wf(:,idx) + 1*fast_learning_rate*dWf;
-            
-            
-            %Adjust rate
-            rate(idx) = rate(idx)+1;
-
+            %dWf = (V+ mu*rate)*beta1+ Wf(:,idx) + mu*one_hot(:,idx);
+            dWf = V + beta2*Wf(:,idx);
+            Wf(:,idx) = Wf(:,idx) - fast_learning_rate*dWf;
 
 
             % Slow learning
@@ -161,56 +171,53 @@ for ee = 1:n_epochs
             % The random addache of that term helps a bit
             dWs = F'*dM*F;
             Ws = Ws + slow_learning_rate*dWs;
-            
-            
+
+
 
             %Process spike
             V = V + Wf(:,idx);
 
-             
+            %Adjust rate
+            rate(idx) = rate(idx)+1;
 
+
+            %break;
             [val,idx] = max(V-Threshold);
         end
 
         rate = (1-lambdaD*dt)*rate;
         xE = F*rate;
         xT = (eye(J)+A*dt)*xT +dt*c(:,i+1);
-        
-    end
-    
 
-    if ee/n_epochs >= completed_learning/100
-        slow_learning_rate = (1-slow_drop_rate)*slow_learning_rate;
-        fast_learning_rate = (1-fast_drop_rate)*fast_learning_rate;
-        
-        disp("Learning: "+ num2str(completed_learning) +"%")
-        completed_learning = completed_learning+1;
-        Wf_ratio = Wf./Wf_true;
-        Ws_ratio = Ws./Ws_true;
-    
-        dWf = Wf-Wf_true;
-        dWf = abs(dWf./Wf_true);
-        
-        display(max(dWf(~isinf(dWf)),[],"all"))
-        
-        
-        
-        dWs = Ws-Ws_true;
-        dWs = abs(dWs./Ws_true);
-        
-        display(max(dWs(~isinf(dWs)),[],"all"))
     end
 
+
+
+    slow_learning_rate = (1-slow_drop_rate)*slow_learning_rate;
+    fast_learning_rate = (1-fast_drop_rate)*fast_learning_rate;
+
+    Wss(:,:,ee) = Ws;
+    Wfs(:,:,ee) = Wf;
+
+
+    disp("Learning epoch: "+ num2str(ee) + "/" + num2str(n_epochs));
+    Wf_ratio = Wf./Wf_true;
+    Ws_ratio = Ws./Ws_true;
+
+    dWf = Wf-Wf_true;
+    dWf = abs(dWf./Wf_true);
+
+    display(max(dWf(~isinf(dWf)),[],"all"))
+
+
+
+    dWs = Ws-Ws_true;
+    dWs = abs(dWs./Ws_true);
+
+    display(max(dWs(~isinf(dWs)),[],"all"))
+
 end
 end
-
-
-function v = one_hot(N,k)
-v = zeros(N,1);
-v(k) =1;
-
-end
-
 
 
 
