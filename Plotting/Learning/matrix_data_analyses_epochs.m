@@ -1,3 +1,5 @@
+
+
 load("Wf_learning_5000.mat");
 load("Ws_learning_5000.mat");
 
@@ -31,7 +33,7 @@ Ws_true = round(F'*(A+lambdaD*eye(J))*F,9);
 [xE,xT,~,~,~]= simulate_network(A,c,F,Threshold,n_time,dt,...
     Ws_true,Wf_true,lambdaD,lambdaV);
 
-
+%%
 
 close all
 f = figure();
@@ -68,7 +70,7 @@ legend(["","","$x_1$","$x_2$"],"FontSize",30,"Interpreter","latex")
 
 
 %%
-
+x = 1: n_epochs;
 eigs =zeros(n_neuron,n_epochs);
 largest_rel_dev = zeros(1,n_epochs);
 means = zeros(1,n_epochs);
@@ -83,14 +85,14 @@ for i = 1:n_epochs
 
 
     % Error
-    try
-    [xE,xT,~,~,~]= simulate_network(A,c,F,Threshold,n_time,dt,...
-    Ws_true,mat,lambdaD,lambdaV);
-    max_errors(i) = max(abs(xE-xT),[],"all");
-    catch exception
-        err = err+1;
-        max_errors(i) = NaN;
-    end
+%     try
+%     [xE,xT,~,~,~]= simulate_network(A,c,F,Threshold,n_time,dt,...
+%     Ws_true,mat,lambdaD,lambdaV);
+%     max_errors(i) = max(abs(xE-xT),[],"all");
+%     catch exception
+%         err = err+1;
+%         max_errors(i) = NaN;
+%     end
 
     
 
@@ -100,8 +102,8 @@ for i = 1:n_epochs
 
     % Largest deviations
     dM = mat-true_matrix;
-    dM = dM./true_matrix;
-    dM2 = abs(dM);
+    dM2 = dM./true_matrix;
+    dM2 = abs(dM2);
     [v,k] = max(dM2(~isinf(dM2)),[],"all","linear");
     largest_rel_dev(i) = dM2(k);
 
@@ -110,26 +112,16 @@ for i = 1:n_epochs
     % statistic deviations
     s = std(dM,1,"all");
     stds(i)  = s;
-    means(i)= max(dM,[],"all");
+    means(i)= mean(abs(dM2),"all");
 
 
 end
 display(num2str(err) +"matrices didnt converge")
+
+
 %%
-x = 1:n_epochs;
-clf
-hold on
 semilogx(x,means)
-semilogx(x,stds)
-clf
-plot(x,max_errors)
-clf
 
-
-semilogx(x,eigs(1,:))
-hold on
-semilogx(x,eigs(2,:))
-semilogx(x,largest_rel_dev)
 %%
 
 
@@ -177,10 +169,57 @@ ax.FontSize = 20;
 xlabel("\# Epoch","FontSize",30,"Interpreter","latex");
 
 
-% folder = "/home/max/Documents/University/Master Thesis/plots/Learning/";
-% prompt = "File name: ";
-% name = input(prompt,"s");
-% dest = strcat(folder,name)
-% exportgraphics(f,dest,"ContentType","vector");
-% 
-% 
+
+%%
+
+[xE,xT,rate,spikes1630,V]= simulate_network(A,c,F,Threshold,n_time,dt,...
+    Ws_true,Wfs(:,:,1630),lambdaD,lambdaV);
+
+
+[xE,xT,rate,spikes724,V]= simulate_network(A,c,F,Threshold,n_time,dt,...
+    Ws_true,Wfs(:,:,724),lambdaD,lambdaV);
+
+bar(sum(spikes1630'))
+title("1630")
+figure
+bar(sum(spikes724'))
+title("724")
+
+%%
+minimum = 0.9003197828372014;
+maximum = 1.1194354976378833; 
+f = figure(9);
+f.Position =[0,600,1300,700];
+
+tiledlayout(1,2,"TileSpacing","tight","Padding","none")
+nexttile(1,[1,1])
+
+imagesc(Wfs(:,:,1630)-Wf_true)
+set(gca,'XAxisLocation','top');
+set(gca,"YAxisLocation","right");
+title("1630")
+ax = gca;
+yticklabels({});
+colormap jet
+cb = colorbar;
+%clim([minimum,maximum]);
+cb.Location = "westoutside";
+ax.FontSize = 20;
+
+
+nexttile(2,[1,1])
+imagesc(Wfs(:,:,724)-Wf_true)
+set(gca,'XAxisLocation','top');
+colorbar;
+title("724")
+colormap jet
+clim([-2e-5,2e-5]);
+ax = gca;
+ax.FontSize = 20;
+folder = "/home/max/Documents/University/Master Thesis/plots/Learning/";
+prompt = "File name: ";
+name = input(prompt,"s");
+dest = strcat(folder,name)
+exportgraphics(f,dest,"ContentType","vector");
+
+

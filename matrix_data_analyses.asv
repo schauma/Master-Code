@@ -1,3 +1,5 @@
+
+
 load("Wf_learning_5000.mat");
 load("Ws_learning_5000.mat");
 
@@ -184,3 +186,26 @@ xlabel("\# Epoch","FontSize",30,"Interpreter","latex");
 % exportgraphics(f,dest,"ContentType","vector");
 % 
 % 
+
+
+%%
+f = figure();
+f.Position =[0,600,1300,700];
+tiledlayout(1,2,"TileSpacing","tight","Padding","none")
+nexttile(1,[1,1])
+imagesc(Wfs(:,:,1630)./Wf_true)
+
+ax = gca;
+grid on
+xlim([0,6000]);
+ax.FontSize = 20;
+xticklabels({});
+
+%legend("Largest rel. Deviation","FontSize",30,"Interpreter","latex");
+
+
+nexttile(2,[1,1])
+
+ax.FontSize = 20;
+xticklabels({});
+legend(["$\lambda1$","$\lambda_2$",""],"FontSize",30,"Interpreter","latex")
